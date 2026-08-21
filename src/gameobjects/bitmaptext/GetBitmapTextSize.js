@@ -109,26 +109,24 @@ var GetBitmapTextSize = function (src, round, updateOrigin, out)
     //  Scan for breach of maxWidth and insert carriage-returns
     if (maxWidth > 0)
     {
-        // Split the text into lines
-        lines = text.split('\n');
-        var wrappedLines = [];
+        //  Each break replaces the trailing space of the overlong line
+        //  with '\n', so the text length stays the same
+        var breakIndices = [];
+        var lineOffset = 0;
 
-        // Loop through each line
+        lines = text.split('\n');
+
         for (i = 0; i < lines.length; i++)
         {
             var line = lines[i];
-            var word = '';
             var wordWidth = 0;
-            var wrappedLine = '';
-            var lineToCheck = '';
             var lineToCheckWidth = 0;
+            var wordSpaceIndex = -1;
+            var lastSpaceIndex = -1;
 
-            // Loop through each character in a line
             for (j = 0; j < line.length; j++)
             {
                 charCode = line.charCodeAt(j);
-
-                word += line[j];
 
                 var wordGlyph = chars[charCode];
 
@@ -137,35 +135,49 @@ var GetBitmapTextSize = function (src, round, updateOrigin, out)
                     wordWidth += wordGlyph.xAdvance;
                 }
 
-                // White space or end of line?
-                if (charCode === wordWrapCharCode || j === line.length - 1)
+                if (charCode === wordWrapCharCode)
                 {
-                    if ((lineToCheckWidth + wordWidth) * sx <= maxWidth)
+                    wordSpaceIndex = lineOffset + j;
+                }
+                else if (j !== line.length - 1)
+                {
+                    continue;
+                }
+
+                //  Word boundary: space or end of line
+                if ((lineToCheckWidth + wordWidth) * sx <= maxWidth)
+                {
+                    lineToCheckWidth += wordWidth;
+                }
+                else
+                {
+                    if (lastSpaceIndex >= 0)
                     {
-                        lineToCheck += word;
-                        lineToCheckWidth += wordWidth;
-                    }
-                    else
-                    {
-                        // If the current word is too long to fit on a line, wrap it
-                        // Remove trailing word wrap char to keep text length the same
-                        wrappedLine = wrappedLine.slice(0, -1);
-                        wrappedLine += (wrappedLine ? '\n' : '') + lineToCheck;
-                        lineToCheck = word;
-                        lineToCheckWidth = wordWidth;
+                        breakIndices.push(lastSpaceIndex);
                     }
 
-                    word = '';
-                    wordWidth = 0;
+                    lineToCheckWidth = wordWidth;
                 }
+
+                lastSpaceIndex = wordSpaceIndex;
+                wordSpaceIndex = -1;
+                wordWidth = 0;
             }
 
-            wrappedLine = wrappedLine.slice(0, -1);
-            wrappedLine += (wrappedLine ? '\n' : '') + lineToCheck;
-            wrappedLines.push(wrappedLine);
+            lineOffset += line.length + 1;
         }
 
-        text = wrappedLines.join('\n');
+        if (breakIndices.length > 0)
+        {
+            var textChars = text.split('');
+
+            for (i = 0; i < breakIndices.length; i++)
+            {
+                textChars[breakIndices[i]] = '\n';
+            }
+
+            text = textChars.join('');
+        }
 
         out.wrappedText = text;
 
