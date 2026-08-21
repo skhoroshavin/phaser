@@ -106,25 +106,6 @@ var GetBitmapTextSize = function (src, round, updateOrigin, out)
     var characters = [];
     var current = null;
 
-    // Measure the width of the text
-    var measureTextWidth = function (text, fontData)
-    {
-        var width = 0;
-
-        for (var i = 0; i < text.length; i++)
-        {
-            var charCode = text.charCodeAt(i);
-            var glyph = fontData.chars[charCode];
-
-            if (glyph)
-            {
-                width += glyph.xAdvance;
-            }
-        }
-
-        return width * sx;
-    };
-
     //  Scan for breach of maxWidth and insert carriage-returns
     if (maxWidth > 0)
     {
@@ -137,9 +118,10 @@ var GetBitmapTextSize = function (src, round, updateOrigin, out)
         {
             var line = lines[i];
             var word = '';
+            var wordWidth = 0;
             var wrappedLine = '';
             var lineToCheck = '';
-            var lineWithWord = '';
+            var lineToCheckWidth = 0;
 
             // Loop through each character in a line
             for (j = 0; j < line.length; j++)
@@ -148,16 +130,20 @@ var GetBitmapTextSize = function (src, round, updateOrigin, out)
 
                 word += line[j];
 
+                var wordGlyph = chars[charCode];
+
+                if (wordGlyph)
+                {
+                    wordWidth += wordGlyph.xAdvance;
+                }
+
                 // White space or end of line?
                 if (charCode === wordWrapCharCode || j === line.length - 1)
                 {
-                    lineWithWord = lineToCheck + word;
-
-                    var textWidth = measureTextWidth(lineWithWord, src.fontData);
-
-                    if (textWidth <= maxWidth)
+                    if ((lineToCheckWidth + wordWidth) * sx <= maxWidth)
                     {
-                        lineToCheck = lineWithWord;
+                        lineToCheck += word;
+                        lineToCheckWidth += wordWidth;
                     }
                     else
                     {
@@ -166,9 +152,11 @@ var GetBitmapTextSize = function (src, round, updateOrigin, out)
                         wrappedLine = wrappedLine.slice(0, -1);
                         wrappedLine += (wrappedLine ? '\n' : '') + lineToCheck;
                         lineToCheck = word;
+                        lineToCheckWidth = wordWidth;
                     }
 
                     word = '';
+                    wordWidth = 0;
                 }
             }
 
