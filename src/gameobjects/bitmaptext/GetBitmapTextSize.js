@@ -100,89 +100,10 @@ var GetBitmapTextSize = function (src, round, updateOrigin, out)
     var currentLineWidth = 0;
 
     var i;
-    var j;
     var lines;
     var words = [];
     var characters = [];
     var current = null;
-
-    //  Scan for breach of maxWidth and insert carriage-returns
-    if (maxWidth > 0)
-    {
-        //  Each break replaces the trailing space of the overlong line
-        //  with '\n', so the text length stays the same
-        var breakIndices = [];
-        var lineOffset = 0;
-
-        lines = text.split('\n');
-
-        for (i = 0; i < lines.length; i++)
-        {
-            var line = lines[i];
-            var wordWidth = 0;
-            var lineToCheckWidth = 0;
-            var wordSpaceIndex = -1;
-            var lastSpaceIndex = -1;
-
-            for (j = 0; j < line.length; j++)
-            {
-                charCode = line.charCodeAt(j);
-
-                var wordGlyph = chars[charCode];
-
-                if (wordGlyph)
-                {
-                    wordWidth += wordGlyph.xAdvance;
-                }
-
-                if (charCode === wordWrapCharCode)
-                {
-                    wordSpaceIndex = lineOffset + j;
-                }
-                else if (j !== line.length - 1)
-                {
-                    continue;
-                }
-
-                //  Word boundary: space or end of line
-                if ((lineToCheckWidth + wordWidth) * sx <= maxWidth)
-                {
-                    lineToCheckWidth += wordWidth;
-                }
-                else
-                {
-                    if (lastSpaceIndex >= 0)
-                    {
-                        breakIndices.push(lastSpaceIndex);
-                    }
-
-                    lineToCheckWidth = wordWidth;
-                }
-
-                lastSpaceIndex = wordSpaceIndex;
-                wordSpaceIndex = -1;
-                wordWidth = 0;
-            }
-
-            lineOffset += line.length + 1;
-        }
-
-        if (breakIndices.length > 0)
-        {
-            var textChars = text.split('');
-
-            for (i = 0; i < breakIndices.length; i++)
-            {
-                textChars[breakIndices[i]] = '\n';
-            }
-
-            text = textChars.join('');
-        }
-
-        out.wrappedText = text;
-
-        textLength = text.length;
-    }
 
     //  Resolve each character into an item carrying its glyph, advance and kerning
     var items = [];
@@ -220,6 +141,91 @@ var GetBitmapTextSize = function (src, round, updateOrigin, out)
 
         lastGlyph = glyph;
         lastCharCode = charCode;
+    }
+
+    //  Apply automatic wrapping
+    if (maxWidth > 0)
+    {
+        var breakIndices = [];
+        var wordWidth = 0;
+        var wordSpace = null;
+        var wordFirst = null;
+        var wrapLineWidth = 0;
+        var lastSpace = null;
+
+        for (i = 0; i <= items.length; i++)
+        {
+            var wrapItem = (i < items.length) ? items[i] : null;
+            var atLineEnd = (wrapItem === null || wrapItem.newline);
+
+            if (!atLineEnd)
+            {
+                if (wordWidth === 0)
+                {
+                    wordFirst = wrapItem;
+                }
+
+                //  More correct would be wordWidth += wrapItem.advance, but the old
+                //  string-based wrap used glyph.xAdvance only, so keeping it to avoid a behaviour change
+                wordWidth += wrapItem.glyph.xAdvance;
+
+                if (wrapItem.code === wordWrapCharCode)
+                {
+                    wordSpace = wrapItem;
+                }
+                else
+                {
+                    continue;
+                }
+            }
+
+            if (wordWidth > 0 || wordSpace !== null)
+            {
+                if ((wrapLineWidth + wordWidth) * sx <= maxWidth)
+                {
+                    wrapLineWidth += wordWidth;
+                }
+                else
+                {
+                    if (lastSpace !== null)
+                    {
+                        lastSpace.newline = true;
+                        breakIndices.push(lastSpace.idx);
+
+                        wordFirst.advance -= wordFirst.kerningOffset;
+                        wordFirst.charWidth -= wordFirst.kerningOffset;
+                        wordFirst.kerningOffset = 0;
+                    }
+
+                    wrapLineWidth = wordWidth;
+                }
+
+                lastSpace = wordSpace;
+                wordSpace = null;
+                wordWidth = 0;
+                wordFirst = null;
+            }
+
+            if (atLineEnd)
+            {
+                wrapLineWidth = 0;
+                lastSpace = null;
+            }
+        }
+
+        if (breakIndices.length > 0)
+        {
+            var textChars = text.split('');
+
+            for (i = 0; i < breakIndices.length; i++)
+            {
+                textChars[breakIndices[i]] = '\n';
+            }
+
+            text = textChars.join('');
+        }
+
+        out.wrappedText = text;
     }
 
     //  Position characters
