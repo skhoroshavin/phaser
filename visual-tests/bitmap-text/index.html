@@ -21,7 +21,7 @@
         ? Phaser.CANVAS
         : Phaser.WEBGL;
 
-    var game = new Phaser.Game({
+    window.game = new Phaser.Game({
         type: rendererType,
         parent: 'game',
         width: 1200,
@@ -37,8 +37,13 @@
 
             create: function ()
             {
-                // Column caption, native size. Second column ("Rich Text") goes beside it later.
+                // Column captions
                 this.add.bitmapText(16, 16, FONT_A, 'Plain Text', NATIVE_SIZE);
+                var richCaption = this.add.bitmapText(620, 16, FONT_A, '', NATIVE_SIZE);
+                richCaption.setRichText([
+                    { text: 'Rich', font: FONT_B, size: NATIVE_SIZE * 0.75, color: 0xffff00 },
+                    { text: ' Text', color: 0xcc66ff }
+                ]);
 
                 // 1. Plain string.
                 this.add.bitmapText(16, 140, FONT_A, 'Plain string', HALF_SIZE);
