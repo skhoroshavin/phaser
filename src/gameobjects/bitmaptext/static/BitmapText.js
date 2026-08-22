@@ -146,6 +146,27 @@ var BitmapText = new Class({
         this._styles = {};
 
         /**
+         * The rich-text segments of this Bitmap Text, or `null` for plain text.
+         *
+         * @name Phaser.GameObjects.BitmapText#_segments
+         * @type {?Phaser.Types.GameObjects.BitmapText.Segment[]}
+         * @private
+         * @since 4.3.0
+         */
+        this._segments = null;
+
+        /**
+         * The resolved style for each character of the flattened text.
+         * `null` for plain text.
+         *
+         * @name Phaser.GameObjects.BitmapText#_styleByIndex
+         * @type {?Array.<Phaser.Types.GameObjects.BitmapText.Style>}
+         * @private
+         * @since 4.3.0
+         */
+        this._styleByIndex = null;
+
+        /**
          * The font size of this Bitmap Text.
          *
          * @name Phaser.GameObjects.BitmapText#_fontSize
@@ -521,6 +542,108 @@ var BitmapText = new Class({
         if (value !== this.text)
         {
             this._text = value.toString();
+
+            this._segments = null;
+            this._styleByIndex = null;
+
+            this._dirty = true;
+
+            this.updateDisplayOrigin();
+        }
+
+        return this;
+    },
+
+    /**
+     * Sets rich text from segments. Each segment resolves to a style,
+     * stored per character of the flattened text.
+     *
+     * @method Phaser.GameObjects.BitmapText#setRichText
+     * @since 4.3.0
+     *
+     * @param {Phaser.Types.GameObjects.BitmapText.Segment[]} segments - The segments to set.
+     *
+     * @return {this} This BitmapText Object.
+     */
+    setRichText: function (segments)
+    {
+        var defaultStyle = { fontData: this.fontData, frame: this.frame, size: undefined, color: 0xffffff };
+        var text = '';
+        var styleByIndex = [];
+
+        for (var i = 0; i < segments.length; i++)
+        {
+            var segment = segments[i];
+
+            if (typeof segment.text !== 'string')
+            {
+                continue;
+            }
+
+            var style = defaultStyle;
+
+            if (segment.style !== undefined)
+            {
+                var namedStyle = this._styles[segment.style];
+
+                if (namedStyle === undefined)
+                {
+                    console.warn('Unknown BitmapText style: ' + segment.style);
+                }
+                else
+                {
+                    style = namedStyle;
+                }
+            }
+
+            var fontData = style.fontData;
+            var frame = style.frame;
+            var size = style.size;
+            var color = style.color;
+
+            if (segment.font !== undefined)
+            {
+                var fontEntry = this.scene.sys.cache.bitmapFont.get(segment.font);
+
+                if (!fontEntry)
+                {
+                    console.warn('Invalid BitmapText font key: ' + segment.font);
+                }
+                else
+                {
+                    fontData = fontEntry.data;
+                    frame = this.scene.sys.textures.getFrame(fontEntry.texture, fontEntry.frame);
+                }
+            }
+
+            //  A style without its own font inherits the BitmapText's font
+            if (fontData === undefined)
+            {
+                fontData = this.fontData;
+                frame = this.frame;
+            }
+
+            if (segment.size !== undefined) { size = segment.size; }
+            if (segment.color !== undefined) { color = segment.color; }
+
+            if (fontData !== style.fontData || size !== style.size || color !== style.color)
+            {
+                style = { fontData: fontData, frame: frame, size: size, color: color };
+            }
+
+            for (var j = 0; j < segment.text.length; j++)
+            {
+                styleByIndex.push(style);
+            }
+
+            text += segment.text;
+        }
+
+        if (text !== this.text || segments !== this._segments)
+        {
+            this._text = text;
+            this._segments = segments;
+            this._styleByIndex = styleByIndex;
 
             this._dirty = true;
 
