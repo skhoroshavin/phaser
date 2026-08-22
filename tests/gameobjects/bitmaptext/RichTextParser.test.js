@@ -26,6 +26,21 @@ describe('RichTextParser', function ()
         ]);
     });
 
+    test('a mismatched closing tag warns and resets the style', function ()
+    {
+        var warn = vi.spyOn(console, 'warn').mockImplementation(function () {});
+
+        expect(ParseRichText('[x]a[/y]b')).toEqual([
+            { text: 'a', style: 'x' },
+            { text: 'b' }
+        ]);
+
+        expect(warn).toHaveBeenCalledOnce();
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('[x]a[/y]b'));
+
+        warn.mockRestore();
+    });
+
     test('an unmatched closing tag is ignored, with a warning', function ()
     {
         var warn = vi.spyOn(console, 'warn').mockImplementation(function () {});
@@ -60,6 +75,20 @@ describe('RichTextParser', function ()
 
         expect(warn).toHaveBeenCalledOnce();
         expect(warn).toHaveBeenCalledWith(expect.stringContaining('a[b'));
+
+        warn.mockRestore();
+    });
+
+    test('a bracket as the very last character warns and is dropped', function ()
+    {
+        var warn = vi.spyOn(console, 'warn').mockImplementation(function () {});
+
+        expect(ParseRichText('ab[')).toEqual([
+            { text: 'ab' }
+        ]);
+
+        expect(warn).toHaveBeenCalledOnce();
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('ab['));
 
         warn.mockRestore();
     });

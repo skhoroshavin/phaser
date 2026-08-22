@@ -12,111 +12,98 @@
 var ParseRichText = function (text)
 {
     var segments = [];
-    var style;
-    var from = 0;
-    var i;
+    var currentStyle;
+    var currentText = '';
+    var currentTag = '';
+    var tagStartIndex = 0;
+    var isParsingTag = false;
 
-    var push = function (to)
+    var flush = function ()
     {
-        if (to <= from) { return; }
+        if (currentText === '') { return; }
 
-        var chunk = text.substring(from, to);
         var last = segments[segments.length - 1];
 
-        //  Merge with the previous segment when the style is unchanged -
-        //  escapes and dropped characters must not split runs
-        if (last !== undefined && last.style === style)
+        if (last !== undefined && last.style === currentStyle)
         {
-            last.text += chunk;
+            last.text += currentText;
+        }
+        else
+        {
+            var segment = { text: currentText };
 
-            return;
+            if (currentStyle !== undefined) { segment.style = currentStyle; }
+
+            segments.push(segment);
         }
 
-        var segment = { text: chunk };
-
-        if (style !== undefined) { segment.style = style; }
-
-        segments.push(segment);
+        currentText = '';
     };
 
-    //  Next index of either bracket at or after `from` (-1 when none)
-    var nextSpecial = function ()
+    for (var i = 0; i < text.length; i++)
     {
-        var open = text.indexOf('[', from);
-        var close = text.indexOf(']', from);
+        var ch = text[i];
 
-        if (open === -1) { return close; }
-        if (close === -1) { return open; }
-
-        return Math.min(open, close);
-    };
-
-    while ((i = nextSpecial()) !== -1)
-    {
-        if (text[i] === ']')
+        if (isParsingTag)
         {
-            if (text[i + 1] === ']')
+            if (ch !== ']')
             {
-                //  Escaped bracket: emit text including one literal ']'
-                push(i + 1);
-
-                from = i + 2;
+                currentTag += ch;
 
                 continue;
             }
 
-            console.warn('BitmapText rich text: unmatched "]" at index ' + i + ' in "' + text + '"');
+            isParsingTag = false;
 
-            push(i);
-
-            from = i + 1;
-
-            continue;
-        }
-
-        if (text[i + 1] === '[')
-        {
-            //  Escaped bracket: emit text including one literal '['
-            push(i + 1);
-
-            from = i + 2;
-
-            continue;
-        }
-
-        var close = text.indexOf(']', i);
-
-        if (close === -1)
-        {
-            console.warn('BitmapText rich text: unclosed bracket at index ' + i + ' in "' + text + '"');
-
-            push(i);
-
-            return segments;
-        }
-
-        push(i);
-
-        var tag = text.substring(i + 1, close);
-
-        if (tag[0] === '/')
-        {
-            if (style === undefined)
+            if (currentTag[0] === '/')
             {
-                console.warn('BitmapText rich text: unmatched closing tag [/' + tag.substring(1) + '] in "' + text + '"');
+                var closing = currentTag.substring(1);
+
+                if (closing !== currentStyle)
+                {
+                    console.warn('BitmapText rich text: unexpected closing tag [/' + closing + '] in "' + text + '"');
+                }
+
+                currentStyle = undefined;
+            }
+            else
+            {
+                currentStyle = currentTag;
             }
 
-            style = undefined;
-        }
-        else
-        {
-            style = tag;
+            continue;
         }
 
-        from = close + 1;
+        if (ch === '[' && text[i + 1] !== '[')
+        {
+            flush();
+
+            isParsingTag = true;
+            currentTag = '';
+            tagStartIndex = i;
+
+            continue;
+        }
+
+        if (ch === ']' && text[i + 1] !== ']')
+        {
+            console.warn('BitmapText rich text: unmatched "]" at index ' + i + ' in "' + text + '"');
+
+            continue;
+        }
+
+        //  Escaped bracket: skip the twin, keep one literal
+        if (ch === '[' || ch === ']') { i++; }
+
+        currentText += ch;
     }
 
-    push(text.length);
+    if (isParsingTag)
+    {
+        console.warn('BitmapText rich text: unclosed bracket at index ' + tagStartIndex + ' in "' + text + '"');
+    }
+
+    flush();
 
     return segments;
 };
