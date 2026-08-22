@@ -17,4 +17,65 @@ describe('RichTextParser', function ()
             { text: 'c' }
         ]);
     });
+
+    test('an unclosed tag styles the rest of the text', function ()
+    {
+        expect(ParseRichText('a[x]bc')).toEqual([
+            { text: 'a' },
+            { text: 'bc', style: 'x' }
+        ]);
+    });
+
+    test('an unmatched closing tag is ignored, with a warning', function ()
+    {
+        var warn = vi.spyOn(console, 'warn').mockImplementation(function () {});
+
+        expect(ParseRichText('a[/x]b')).toEqual([
+            { text: 'a' },
+            { text: 'b' }
+        ]);
+
+        expect(warn).toHaveBeenCalledOnce();
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('a[/x]b'));
+
+        warn.mockRestore();
+    });
+
+    test('adjacent styled runs', function ()
+    {
+        expect(ParseRichText('a[x]b[/x][y]c[/y]d')).toEqual([
+            { text: 'a' },
+            { text: 'b', style: 'x' },
+            { text: 'c', style: 'y' },
+            { text: 'd' }
+        ]);
+    });
+
+    test('a bracket without a closing bracket warns and drops the rest', function ()
+    {
+        var warn = vi.spyOn(console, 'warn').mockImplementation(function () {});
+
+        expect(ParseRichText('a[b')).toEqual([
+            { text: 'a' }
+        ]);
+
+        expect(warn).toHaveBeenCalledOnce();
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('a[b'));
+
+        warn.mockRestore();
+    });
+
+    test('empty runs are not emitted', function ()
+    {
+        expect(ParseRichText('[x][/x]')).toEqual([]);
+        expect(ParseRichText('')).toEqual([]);
+    });
+
+    test('newlines pass through unchanged', function ()
+    {
+        expect(ParseRichText('a\n[x]b\nc[/x]')).toEqual([
+            { text: 'a\n' },
+            { text: 'b\nc', style: 'x' }
+        ]);
+    });
 });

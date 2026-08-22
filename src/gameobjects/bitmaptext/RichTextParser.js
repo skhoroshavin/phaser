@@ -30,13 +30,32 @@ var ParseRichText = function (text)
     {
         var close = text.indexOf(']', i);
 
-        if (close === -1) { break; }
+        if (close === -1)
+        {
+            console.warn('BitmapText rich text: unclosed bracket at index ' + i + ' in "' + text + '"');
+
+            push(i);
+
+            return segments;
+        }
 
         push(i);
 
         var tag = text.substring(i + 1, close);
 
-        style = (tag[0] === '/') ? undefined : tag;
+        if (tag[0] === '/')
+        {
+            if (style === undefined)
+            {
+                console.warn('BitmapText rich text: unmatched closing tag [/' + tag.substring(1) + '] in "' + text + '"');
+            }
+
+            style = undefined;
+        }
+        else
+        {
+            style = tag;
+        }
 
         from = close + 1;
     }
