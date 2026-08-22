@@ -12,6 +12,7 @@ var GameObject = require('../../GameObject');
 var GetBitmapTextSize = require('../GetBitmapTextSize');
 var ParseFromAtlas = require('../ParseFromAtlas');
 var ParseXMLBitmapFont = require('../ParseXMLBitmapFont');
+var ParseRichText = require('../RichTextParser');
 var Rectangle = require('../../../geom/rectangle/Rectangle');
 var Render = require('./BitmapTextRender');
 var TintModes = require('../../../renderer/TintModes');
@@ -471,7 +472,7 @@ var BitmapText = new Class({
 
     /**
      * Registers a named text style: a bitmap font plus optional size and color.
-     * Segments passed to `setText` reference it by name.
+     * Segments passed to `setRichText` reference it by name.
      *
      * @method Phaser.GameObjects.BitmapText#addTextStyle
      * @since 4.3.0
@@ -555,18 +556,24 @@ var BitmapText = new Class({
     },
 
     /**
-     * Sets rich text from segments. Each segment resolves to a style,
-     * stored per character of the flattened text.
+     * Sets rich text, either from markup string with `[style]...[/style]`
+     * tags, or from explicit segments.
      *
      * @method Phaser.GameObjects.BitmapText#setRichText
      * @since 4.3.0
      *
-     * @param {Phaser.Types.GameObjects.BitmapText.Segment[]} segments - The segments to set.
+     * @param {(string|Phaser.Types.GameObjects.BitmapText.Segment[])} richText - Markup string or segments to set.
      *
      * @return {this} This BitmapText Object.
      */
-    setRichText: function (segments)
+    setRichText: function (richText)
     {
+        var segments = richText;
+        if (typeof richText === 'string')
+        {
+            segments = ParseRichText(richText);
+        }
+
         var defaultStyle = { fontData: this.fontData, frame: this.frame, size: undefined, color: 0xffffff };
         var text = '';
         var styleByIndex = [];
