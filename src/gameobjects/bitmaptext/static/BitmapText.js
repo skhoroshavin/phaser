@@ -136,6 +136,16 @@ var BitmapText = new Class({
         this._text = '';
 
         /**
+         * Named text styles from `addTextStyle`, resolved per font key.
+         *
+         * @name Phaser.GameObjects.BitmapText#_styles
+         * @type {Object.<string, Phaser.Types.GameObjects.BitmapText.Style>}
+         * @private
+         * @since 4.3.0
+         */
+        this._styles = {};
+
+        /**
          * The font size of this Bitmap Text.
          *
          * @name Phaser.GameObjects.BitmapText#_fontSize
@@ -434,6 +444,52 @@ var BitmapText = new Class({
         if (spacing === undefined) { spacing = 0; }
 
         this.lineSpacing = spacing;
+
+        return this;
+    },
+
+    /**
+     * Registers a named text style: a bitmap font plus optional size and color.
+     * Segments passed to `setText` reference it by name.
+     *
+     * @method Phaser.GameObjects.BitmapText#addTextStyle
+     * @since 4.3.0
+     *
+     * @param {string} name - The style name.
+     * @param {Phaser.Types.GameObjects.BitmapText.TextStyleConfig} config - The style configuration.
+     *
+     * @return {this} This BitmapText Object.
+     */
+    addTextStyle: function (name, config)
+    {
+        var fontData;
+        var frame;
+
+        if (config.font !== undefined)
+        {
+            var fontEntry = this.scene.sys.cache.bitmapFont.get(config.font);
+
+            if (!fontEntry)
+            {
+                console.warn('Invalid BitmapText style key: ' + config.font);
+
+                return this;
+            }
+
+            fontData = fontEntry.data;
+            frame = this.scene.sys.textures.getFrame(fontEntry.texture, fontEntry.frame);
+        }
+
+        var color = config.color;
+
+        if (color === undefined) { color = 0xffffff; }
+
+        this._styles[name] = {
+            fontData: fontData,
+            frame: frame,
+            size: config.size,
+            color: color
+        };
 
         return this;
     },
