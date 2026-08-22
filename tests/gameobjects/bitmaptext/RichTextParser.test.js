@@ -31,8 +31,7 @@ describe('RichTextParser', function ()
         var warn = vi.spyOn(console, 'warn').mockImplementation(function () {});
 
         expect(ParseRichText('a[/x]b')).toEqual([
-            { text: 'a' },
-            { text: 'b' }
+            { text: 'ab' }
         ]);
 
         expect(warn).toHaveBeenCalledOnce();
@@ -69,6 +68,34 @@ describe('RichTextParser', function ()
     {
         expect(ParseRichText('[x][/x]')).toEqual([]);
         expect(ParseRichText('')).toEqual([]);
+    });
+
+    test('escaped open bracket is a literal bracket', function ()
+    {
+        expect(ParseRichText('a[[b')).toEqual([
+            { text: 'a[b' }
+        ]);
+    });
+
+    test('escaped close bracket is a literal bracket', function ()
+    {
+        expect(ParseRichText('a]]b')).toEqual([
+            { text: 'a]b' }
+        ]);
+    });
+
+    test('a stray close bracket warns and is dropped', function ()
+    {
+        var warn = vi.spyOn(console, 'warn').mockImplementation(function () {});
+
+        expect(ParseRichText('a]b')).toEqual([
+            { text: 'ab' }
+        ]);
+
+        expect(warn).toHaveBeenCalledOnce();
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('a]b'));
+
+        warn.mockRestore();
     });
 
     test('newlines pass through unchanged', function ()

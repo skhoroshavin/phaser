@@ -1,5 +1,6 @@
 /**
  * Parses `[style]...[/style]` markup into rich-text segments.
+ * `[[` and `]]` are escapes for literal brackets.
  *
  * @function Phaser.GameObjects.BitmapText.ParseRichText
  * @since 4.3.0
@@ -19,15 +20,70 @@ var ParseRichText = function (text)
     {
         if (to <= from) { return; }
 
-        var segment = { text: text.substring(from, to) };
+        var chunk = text.substring(from, to);
+        var last = segments[segments.length - 1];
+
+        //  Merge with the previous segment when the style is unchanged -
+        //  escapes and dropped characters must not split runs
+        if (last !== undefined && last.style === style)
+        {
+            last.text += chunk;
+
+            return;
+        }
+
+        var segment = { text: chunk };
 
         if (style !== undefined) { segment.style = style; }
 
         segments.push(segment);
     };
 
-    while ((i = text.indexOf('[', from)) !== -1)
+    //  Next index of either bracket at or after `from` (-1 when none)
+    var nextSpecial = function ()
     {
+        var open = text.indexOf('[', from);
+        var close = text.indexOf(']', from);
+
+        if (open === -1) { return close; }
+        if (close === -1) { return open; }
+
+        return Math.min(open, close);
+    };
+
+    while ((i = nextSpecial()) !== -1)
+    {
+        if (text[i] === ']')
+        {
+            if (text[i + 1] === ']')
+            {
+                //  Escaped bracket: emit text including one literal ']'
+                push(i + 1);
+
+                from = i + 2;
+
+                continue;
+            }
+
+            console.warn('BitmapText rich text: unmatched "]" at index ' + i + ' in "' + text + '"');
+
+            push(i);
+
+            from = i + 1;
+
+            continue;
+        }
+
+        if (text[i + 1] === '[')
+        {
+            //  Escaped bracket: emit text including one literal '['
+            push(i + 1);
+
+            from = i + 2;
+
+            continue;
+        }
+
         var close = text.indexOf(']', i);
 
         if (close === -1)
