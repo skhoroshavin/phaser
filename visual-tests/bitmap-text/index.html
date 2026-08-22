@@ -45,6 +45,18 @@
                     { text: ' Text', color: 0xcc66ff }
                 ]);
 
+                // 1. Markup string with named styles, autowrap + tight lines.
+                //    name = Clarendon red, item = green, vehicle = 0.75x orange,
+                //    accent = purple. Explicit \n starts a second speaker line.
+                var markup = this.add.bitmapText(620, 140, FONT_A, '', HALF_SIZE);
+                markup.addTextStyle('name', { font: FONT_B, color: 0xff6666 });
+                markup.addTextStyle('item', { color: 0x66ff66 });
+                markup.addTextStyle('vehicle', { size: NATIVE_SIZE * 0.75, color: 0xff8800 });
+                markup.addTextStyle('accent', { color: 0xcc66ff });
+                markup.setRichText('[name]T-800:[/name] Give me your [item]clothes[/item], your [item]boots[/item] and your [vehicle]motorcycle[/vehicle].\n\n[name]Guy:[/name] You forgot to say [accent]please[/accent].');
+                markup.setMaxWidth(450);
+                markup.setLineSpacing(-12);
+
                 // 1. Plain string.
                 this.add.bitmapText(16, 140, FONT_A, 'Plain string', HALF_SIZE);
 
